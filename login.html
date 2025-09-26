@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Pantheos - Login Confirmation</title>
+	<style>
+		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background:#0b1220; color:#e8eefc; }
+		.container { max-width: 560px; margin: 0 auto; background:#101a33; border:1px solid #233155; border-radius: 12px; padding: 24px; }
+		h1 { font-size: 20px; margin: 0 0 12px; }
+		p { color:#b8c4e6; }
+		code { background:#0b1220; padding:2px 6px; border-radius:6px; }
+		button { background:#4f7cff; color:#fff; border:none; border-radius:8px; padding:12px 16px; font-weight:600; cursor:pointer; }
+		button[disabled] { opacity:.6; cursor: default; }
+		.status { margin-top: 12px; min-height: 20px; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>Confirm login for Pantheos</h1>
+		<p>Session ID: <code id="sid">(loading)</code></p>
+		<p>When you press confirm, the game will detect your login and continue.</p>
+		<button id="confirm">Confirm login</button>
+		<div class="status" id="status"></div>
+	</div>
+
+	<script>
+		// Configure from your Supabase project
+		const SUPABASE_URL = "https://gjukoikbghevalyffybe.supabase.co";
+		const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdWtvaWtiZ2hldmFseWZmeWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4NzE4MTcsImV4cCI6MjA3NDQ0NzgxN30.w9nPda2GiMUoXQOdDCWJSqf23A4CtJ5JaxrY3aPZ4RA";
+
+		const sidEl = document.getElementById('sid');
+		const statusEl = document.getElementById('status');
+		const btn = document.getElementById('confirm');
+
+		const params = new URLSearchParams(location.search);
+		const sid = params.get('sid') || '';
+		sidEl.textContent = sid || '(missing)';
+
+		function setStatus(text, ok=false) {
+			statusEl.textContent = text;
+			statusEl.style.color = ok ? '#67e8a5' : '#ffb4a3';
+		}
+
+		async function confirmLogin() {
+			if (!sid) {
+				setStatus('No session id (sid) provided in URL');
+				return;
+			}
+			btn.disabled = true;
+			setStatus('Confirming...');
+			try {
+				const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/login_sessions?on_conflict=sid`;
+				const res = await fetch(url, {
+					method: 'POST',
+					headers: {
+						'apikey': SUPABASE_ANON_KEY,
+						'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+						'Content-Type': 'application/json',
+						'Prefer': 'resolution=merge-duplicates'
+					},
+					body: JSON.stringify([{ sid, confirmed: true }])
+				});
+				if (!res.ok) {
+					const txt = await res.text();
+					throw new Error(`HTTP ${res.status}: ${txt}`);
+				}
+				setStatus('Confirmed! You can return to the game.', true);
+			} catch (err) {
+				setStatus(String(err));
+				btn.disabled = false;
+			}
+		}
+
+		btn.addEventListener('click', confirmLogin);
+	</script>
+</body>
+</html>
+
